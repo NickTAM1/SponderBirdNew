@@ -92,11 +92,30 @@ jobs:
             name: ${{ needs.build.outputs.artifact-name }}
             path: ./game
 
+        - name: Prepare Pages content
+          run: |
+            set -e
+            mkdir -p ./pages
+
+            if [ -f ./game/index.html ]; then
+              cp -R ./game/. ./pages
+            elif [ -f ./game/WebGL/index.html ]; then
+              cp -R ./game/WebGL/. ./pages
+            elif [ -f ./game/builds/WebGL/index.html ]; then
+              cp -R ./game/builds/WebGL/. ./pages
+            else
+              echo "index.html not found in downloaded artifact"
+              find ./game -maxdepth 5 -type f | sort
+              exit 1
+            fi
+
+            test -f ./pages/index.html
+
         - name: Upload to GitHub pages artifact store
           uses: actions/upload-pages-artifact@v4
           with:
             name: ${{ env.PAGES_ARTIFACT_NAME }}
-            path: ./game
+            path: ./pages
 
         - name: Deploy to GitHub Pages
           id: deploy
