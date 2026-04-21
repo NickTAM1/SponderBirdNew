@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }} -${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   build: 
     name: Build Unity WebGL
@@ -24,27 +27,35 @@ jobs:
         with:
           lfs: true
       - name: Cache Unity Library
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: Library
-          key: Library-WebGL-${{ hashFiles('SponderBird/Assets/**', 'SponderBird/Packages/**', 'SponderBird/ProjectSettings/**') }}  
+          key: Library-WebGL-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
           restore-keys: |
             Library-WebGL-
             Library-
+
+      - name: Validate Unity credentials
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        run: |
+          if [ -z "$UNITY_LICENSE" ] && [ -z "$UNITY_SERIAL" ]; then
+            echo "Missing Unity credentials. Set UNITY_LICENSE (recommended for Personal) or UNITY_SERIAL in repository secrets."
+            exit 1
+          fi
 
       - name: Build Unity WebGL
         uses: game-ci/unity-builder@v4
         env: 
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           projectPath: .
           targetPlatform: WebGL
           buildsPath: builds
-
-      - name: Debug output structure
-        run: find builds/ -type f | sort
 
       - name: Set artifact name
         id: set-artifact-name
@@ -54,7 +65,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.set-artifact-name.outputs.name }}
-          path: builds/WebGL/WebGL
+          path: builds/WebGL
           retention-days: 7
           if-no-files-found: error
     
@@ -88,6 +99,6 @@ jobs:
           uses: actions/deploy-pages@v4
 
         - name: Display deployment URL
-          run:
+          run: |
             echo "Game is live at"
-            echo " ${{ steps.deploy.outputs.page_url }}"
+            echo "${{ steps.deploy.outputs.page_url }}"
