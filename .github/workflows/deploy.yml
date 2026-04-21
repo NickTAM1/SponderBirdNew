@@ -13,6 +13,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  PAGES_ARTIFACT_NAME: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
+
 jobs:
   build: 
     name: Build Unity WebGL
@@ -92,11 +95,14 @@ jobs:
         - name: Upload to GitHub pages artifact store
           uses: actions/upload-pages-artifact@v4
           with:
+            name: ${{ env.PAGES_ARTIFACT_NAME }}
             path: ./game
 
         - name: Deploy to GitHub Pages
           id: deploy
           uses: actions/deploy-pages@v4
+          with:
+            artifact_name: ${{ env.PAGES_ARTIFACT_NAME }}
 
         - name: Display deployment URL
           run: |
