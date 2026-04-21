@@ -1,0 +1,93 @@
+name: Build and Deploy Unity WebGL
+
+on: 
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  
+concurrency:
+  group: ${{ github.workflow }} -${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build: 
+    name: Build Unity WebGL
+    runs-on: ubuntu-latest
+
+    outputs:
+      artifact-name: ${{ steps.set-artifact-name.outputs.name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Cache Unity Library
+        uses: actions/cache@v3
+        with:
+          path: Library
+          key: Library-WebGL-${{ hashFiles('SponderBird/Assets/**', 'SponderBird/Packages/**', 'SponderBird/ProjectSettings/**') }}  
+          restore-keys: |
+            Library-WebGL-
+            Library-
+
+      - name: Build Unity WebGL
+        uses: game-ci/unity-builder@v4
+        env: 
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: .
+          targetPlatform: WebGL
+          buildsPath: builds
+
+      - name: Debug output structure
+        run: find builds/ -type f | sort
+
+      - name: Set artifact name
+        id: set-artifact-name
+        run: echo "name=WebGL-Build-${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Upload WebGL Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.set-artifact-name.outputs.name }}
+          path: builds/WebGL/WebGL
+          retention-days: 7
+          if-no-files-found: error
+    
+  deploy:    
+      name: Deploy to GitHub Pages
+      needs: build
+      runs-on: ubuntu-latest
+
+      permissions:
+        pages: write
+        id-token: write
+
+      environment:
+        name: github-pages
+        url: ${{ steps.deploy.outputs.page_url }}
+
+      steps:
+        - name: Download WebGL Build
+          uses: actions/download-artifact@v4
+          with:
+            name: ${{ needs.build.outputs.artifact-name }}
+            path: ./game
+
+        - name: Upload to GitHub pages artifact store
+          uses: actions/upload-pages-artifact@v4
+          with:
+            path: ./game
+
+        - name: Deploy to GitHub Pages
+          id: deploy
+          uses: actions/deploy-pages@v4
+
+        - name: Display deployment URL
+          run:
+            echo "Game is live at"
+            echo " ${{ steps.deploy.outputs.page_url }}"
