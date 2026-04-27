@@ -17,15 +17,23 @@ mergeInto(LibraryManager.library, {
 
         function sendAuthToUnity() {
             var payload = JSON.stringify(globalScope.__fbAuth);
-            var moduleInstance = globalScope.Module;
 
-            if (moduleInstance && typeof moduleInstance.SendMessage === "function") {
-                moduleInstance.SendMessage("FirebaseManager", "OnAuthReceived", payload);
+            // Unity 6+: unityInstance stored on window by the loader
+            if (globalScope.unityInstance && typeof globalScope.unityInstance.SendMessage === "function") {
+                globalScope.unityInstance.SendMessage("GameManager", "OnAuthReceived", payload);
                 return;
             }
 
+            // Older Unity: Module.SendMessage
+            var moduleInstance = globalScope.Module;
+            if (moduleInstance && typeof moduleInstance.SendMessage === "function") {
+                moduleInstance.SendMessage("GameManager", "OnAuthReceived", payload);
+                return;
+            }
+
+            // Legacy global SendMessage
             if (typeof globalScope.SendMessage === "function") {
-                globalScope.SendMessage("FirebaseManager", "OnAuthReceived", payload);
+                globalScope.SendMessage("GameManager", "OnAuthReceived", payload);
                 return;
             }
 

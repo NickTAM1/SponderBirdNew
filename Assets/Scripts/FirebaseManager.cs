@@ -75,12 +75,6 @@ public class FirebaseManager : MonoBehaviour
 
     public void SubmitScore(int score, int pipes, int duration, int flaps, string sessionId, string sessionStartIso, string sessionEndIso)
     {
-        if (!IsAuthenticated)
-        {
-            Debug.Log("Not authenticated. Score not submitted.");
-            return;
-        }
-
         var payload = new ScorePayload
         {
             score = score,
