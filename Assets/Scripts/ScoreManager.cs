@@ -17,7 +17,9 @@ public class ScoreManager : MonoBehaviour
 
     private float sessionStartTime = 0f;
     private int pipesPassed = 0;
-
+    private int totalFlaps = 0;
+    private string sessionId = "";
+    private string sessionStartIso = "";
 
     private void Awake()
     {
@@ -34,9 +36,12 @@ public class ScoreManager : MonoBehaviour
     public void ResetScore()
     {
         currentScore = 0;
-
         pipesPassed = 0;
+        totalFlaps = 0;
+
         sessionStartTime = Time.time;
+        sessionId = System.Guid.NewGuid().ToString();
+        sessionStartIso = System.DateTime.UtcNow.ToString("o");
 
         UpdateScoreDisplay();
     }
@@ -46,6 +51,11 @@ public class ScoreManager : MonoBehaviour
         currentScore++;
         pipesPassed++;
         UpdateScoreDisplay();
+    }
+
+    public void AddFlap()
+    {
+        totalFlaps++;
     }
 
     public int GetCurrentScore() => currentScore;
@@ -66,7 +76,11 @@ public class ScoreManager : MonoBehaviour
         if (FirebaseManager.Instance != null)
         {
             int duration = Mathf.RoundToInt(Time.time - sessionStartTime);
-            FirebaseManager.Instance.SubmitScore(currentScore, pipesPassed, duration);
+            string sessionEndIso = System.DateTime.UtcNow.ToString("o");
+            FirebaseManager.Instance.SubmitScore(
+                currentScore, pipesPassed, duration,
+                totalFlaps, sessionId, sessionStartIso, sessionEndIso
+            );
         }
     }
 

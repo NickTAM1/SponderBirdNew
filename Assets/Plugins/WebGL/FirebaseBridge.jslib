@@ -96,115 +96,43 @@ mergeInto(LibraryManager.library, {
         }
 
         var rawJson = UTF8ToString(jsonBodyPtr);
-        var parsedPayload;
+        var payload;
         try {
-            parsedPayload = JSON.parse(rawJson);
-        } catch (error) {
-            console.error("[FirebaseBridge] Score payload is invalid JSON.", error);
+            payload = JSON.parse(rawJson);
+        } catch (e) {
+            console.error("[FirebaseBridge] Invalid score payload JSON.", e);
             return;
         }
 
         var auth = globalScope.__fbAuth || {};
-        var projectId = auth.projectId || parsedPayload.projectId || "";
-        if (!auth.uid || !auth.idToken || !projectId) {
-            console.warn("[FirebaseBridge] Missing auth or projectId. Score not submitted.");
+        if (!auth.uid) {
+            console.warn("[FirebaseBridge] No authenticated user. Score not sent.");
             return;
         }
 
-        var baseUrl = "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(projectId) + "/databases/(default)/documents";
-        var userDocUrl = baseUrl + "/users/" + encodeURIComponent(auth.uid);
-        var headers = {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + auth.idToken
+        var now = new Date().toISOString();
+        var durationMs = (payload.duration || 0) * 1000;
+        var endTime = payload.sessionEndIso || now;
+        var startTime = payload.sessionStartIso || new Date(Date.now() - durationMs).toISOString();
+        var sessionId = payload.sessionId || (auth.uid + "-" + Date.now());
+
+        var message = {
+            type: "game-over",
+            userId: auth.uid,
+            score: payload.score || 0,
+            pipesPassed: payload.pipes || 0,
+            clicks: payload.flaps || 0,
+            durationSeconds: payload.duration || 0,
+            sessionId: sessionId,
+            startTime: startTime,
+            endTime: endTime
         };
 
-        var scoreDoc = {
-            fields: {
-                userId: { stringValue: auth.uid },
-                score: { integerValue: String(parsedPayload.score || 0) },
-                pipes: { integerValue: String(parsedPayload.pipes || 0) },
-                duration: { integerValue: String(parsedPayload.duration || 0) },
-                timestamp: { timestampValue: new Date().toISOString() }
-            }
-        };
-
-        fetch(baseUrl + "/scores", {
-            method: "POST",
-            headers: headers,
-            body: JSON.stringify(scoreDoc)
-        })
-            .then(function (response) {
-                if (!response.ok) {
-                    return response.text().then(function (text) {
-                        throw new Error("Score write failed (" + response.status + "): " + text);
-                    });
-                }
-                return response.json();
-            })
-            .then(function (data) {
-                console.log("[FirebaseBridge] Score saved:", data.name);
-            })
-            .catch(function (error) {
-                console.error("[FirebaseBridge] Error saving score:", error);
-            });
-
-        fetch(userDocUrl, {
-            method: "GET",
-            headers: headers
-        })
-            .then(function (response) {
-                if (response.status === 404) {
-                    return null;
-                }
-                if (!response.ok) {
-                    return response.text().then(function (text) {
-                        throw new Error("User read failed (" + response.status + "): " + text);
-                    });
-                }
-                return response.json();
-            })
-            .then(function (doc) {
-                var currentHigh = 0;
-                var currentGames = 0;
-
-                if (doc && doc.fields) {
-                    if (doc.fields.highscore && doc.fields.highscore.integerValue) {
-                        currentHigh = parseInt(doc.fields.highscore.integerValue, 10) || 0;
-                    }
-                    if (doc.fields.games && doc.fields.games.integerValue) {
-                        currentGames = parseInt(doc.fields.games.integerValue, 10) || 0;
-                    }
-                }
-
-                var nextHigh = Math.max(currentHigh, parsedPayload.score || 0);
-                var nextGames = currentGames + 1;
-                var patchBody = {
-                    fields: {
-                        highscore: { integerValue: String(nextHigh) },
-                        games: { integerValue: String(nextGames) }
-                    }
-                };
-
-                return fetch(userDocUrl + "?updateMask.fieldPaths=highscore&updateMask.fieldPaths=games", {
-                    method: "PATCH",
-                    headers: headers,
-                    body: JSON.stringify(patchBody)
-                });
-            })
-            .then(function (response) {
-                if (!response.ok) {
-                    return response.text().then(function (text) {
-                        throw new Error("User patch failed (" + response.status + "): " + text);
-                    });
-                }
-                return response.json();
-            })
-            .then(function () {
-                console.log("[FirebaseBridge] User stats updated.");
-            })
-            .catch(function (error) {
-                console.error("[FirebaseBridge] User profile update failed:", error);
-            });
+        if (globalScope.parent && globalScope.parent !== globalScope) {
+            globalScope.parent.postMessage(message, "*");
+            console.log("[FirebaseBridge] Game telemetry sent to portal.");
+        } else {
+            console.warn("[FirebaseBridge] No parent window. Game must run inside the portal iframe.");
+        }
     }
 });
-

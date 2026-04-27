@@ -22,7 +22,7 @@ public class FirebaseManager : MonoBehaviour
     [DllImport("__Internal")] private static extern void InitFirebaseBridge();
     [DllImport("__Internal")] private static extern void SubmitScoreToFirestore(string jsonBody);
 #else
-    private static void InitFirebaseBridge() 
+    private static void InitFirebaseBridge()
      => Debug.Log("Firebase bridge is only available in WebGL builds.");
 
     private static void SubmitScoreToFirestore(string jsonBody)
@@ -73,7 +73,7 @@ public class FirebaseManager : MonoBehaviour
         Debug.Log($"User Authenticated as {DisplayName}, UID {UserId}");
     }
 
-    public void SubmitScore(int score, int pipes, int duration)
+    public void SubmitScore(int score, int pipes, int duration, int flaps, string sessionId, string sessionStartIso, string sessionEndIso)
     {
         if (!IsAuthenticated)
         {
@@ -86,6 +86,10 @@ public class FirebaseManager : MonoBehaviour
             score = score,
             pipes = pipes,
             duration = duration,
+            flaps = flaps,
+            sessionId = sessionId,
+            sessionStartIso = sessionStartIso,
+            sessionEndIso = sessionEndIso,
             projectId = ProjectId
         };
 
@@ -118,7 +122,10 @@ public class FirebaseManager : MonoBehaviour
         public int score;
         public int pipes;
         public int duration;
+        public int flaps;
+        public string sessionId;
+        public string sessionStartIso;
+        public string sessionEndIso;
         public string projectId;
-
     }
 }
