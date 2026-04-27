@@ -20,12 +20,12 @@ mergeInto(LibraryManager.library, {
             var moduleInstance = globalScope.Module;
 
             if (moduleInstance && typeof moduleInstance.SendMessage === "function") {
-                moduleInstance.SendMessage("GameManager", "OnAuthReceived", payload);
+                moduleInstance.SendMessage("FirebaseManager", "OnAuthReceived", payload);
                 return;
             }
 
             if (typeof globalScope.SendMessage === "function") {
-                globalScope.SendMessage("GameManager", "OnAuthReceived", payload);
+                globalScope.SendMessage("FirebaseManager", "OnAuthReceived", payload);
                 return;
             }
 
