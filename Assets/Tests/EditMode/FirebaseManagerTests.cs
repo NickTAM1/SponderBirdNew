@@ -1,4 +1,3 @@
-using System.Security.Permissions;
 using UnityEngine;
 using NUnit.Framework;
 
@@ -120,7 +119,8 @@ public class FirebaseManagerTests
     [Test]
     public void SubmitScore_WhenNotAuthenticated_DoesNotThrow()
     {
-        Assert.DoesNotThrow(() => firebaseManager.SubmitScore(10, 10, 30));
+        Assert.DoesNotThrow(() => firebaseManager.SubmitScore(
+            10, 10, 30, 5, "session-id", "2024-01-01T00:00:00Z", "2024-01-01T00:00:30Z"));
     }
 
     [Test]
@@ -128,7 +128,8 @@ public class FirebaseManagerTests
     {
         string json = BuildAuthJson("1234", "token_1234", "Sponder", "beetle-ball");
         firebaseManager.OnAuthReceived(json);
-        Assert.DoesNotThrow(() => firebaseManager.SubmitScore(10, 10, 30));
+        Assert.DoesNotThrow(() => firebaseManager.SubmitScore(
+            10, 10, 30, 5, "session-id", "2024-01-01T00:00:00Z", "2024-01-01T00:00:30Z"));
     }
 
 
